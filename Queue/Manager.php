@@ -79,6 +79,7 @@ class Manager
             $list[] = array(
                 'queue_name'    => $name,
                 'message_id'    => $msg['message_id'],
+                'scheduled_time' => $msg['scheduled_time'],
                 'message_class' => get_class($o),
                 'handle'        => $msg['handle'],
                 'log'           => $msg['log'],
@@ -129,6 +130,7 @@ class Manager
                         FROM " . $this->messageTable . "
                         WHERE queue_id = :queue_id
                         AND (handle IS NULL OR timeout+" . (int)$timeout . " < " . (int)$microtime .")
+                        AND (scheduled_time IS NULL OR scheduled_time <= NOW())
                         LIMIT ".$max;
                 $stmt = $db->prepare($sql);
                 $stmt->execute(array('queue_id'=>$qid));
@@ -207,15 +209,17 @@ class Manager
             $q->execute($max);
         }
     }
-    
+
     /**
      * Add new message to queue
-     * 
+     *
      * @param Message $message
      * @param string $name
+     * @param mixed $scheduledTime
      * @return bool
+     * @throws Exception
      */
-    public function addMessageToQueue(Message $message, $name)
+    public function addMessageToQueue(Message $message, $name, $scheduledTime = null)
     {
         $q      = $this->getQueue($name);
         $qid    = $this->getQueueId($q->getName());
@@ -223,9 +227,9 @@ class Manager
         $md5    = md5($body);
 
         $sql = 'INSERT INTO ' . $this->messageTable . '
-            (queue_id, body, created, timeout, md5)
+            (queue_id, body, created, timeout, md5, scheduled_time)
             VALUES
-            (:queue_id, :body, :created, :timeout, :md5)
+            (:queue_id, :body, :created, :timeout, :md5, :scheduled_time)
             ';
         $stmt = $this->getDb()->prepare($sql);
         $stmt->bindParam(':queue_id', $qid, \PDO::PARAM_INT);
@@ -233,6 +237,7 @@ class Manager
         $stmt->bindParam(':md5', $md5, \PDO::PARAM_STR);
         $stmt->bindValue(':created', time(), \PDO::PARAM_INT);
         $stmt->bindValue(':timeout', 30, \PDO::PARAM_INT);
+        $stmt->bindValue(':scheduled_time', $scheduledTime);
         $stmt->execute();
         return true;
     }
