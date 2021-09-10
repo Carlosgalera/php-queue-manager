@@ -10,6 +10,7 @@
 
 namespace Queue;
 
+use Psr\Container\ContainerInterface;
 /**
  * Message abstract class
  * 
@@ -27,7 +28,7 @@ abstract class Message
         $this->_data = $options;
     }
 
-    abstract public function execute();
+    abstract public function execute(ContainerInterface $container);
     
     public function toArray()
     {

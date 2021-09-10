@@ -10,6 +10,7 @@
 
 namespace Queue;
 
+use Psr\Container\ContainerInterface;
 /**
  * Queue Manager class
  * 
@@ -23,11 +24,22 @@ class Manager
      * @var $_pdo \PDO
      */
     protected $_pdo;
-    
+
+    /**
+     * @var ContainerInterface
+     */
+    protected $container;
+
     /* tables for MQ */
     protected $queueTable   = 'queue'; // list of allowed queues
     protected $messageTable = 'message'; // list of current messages in allowed queues
-    
+
+
+    public function setContainer(ContainerInterface $container)
+    {
+        $this->container = $container;
+    }
+
     public function setPdo(\PDO $pdo)
     {
         $this->_pdo = $pdo;
@@ -172,7 +184,7 @@ class Manager
     {
         foreach($this->receiveQueueMessages($queue, $max, $timeout) as $message) {
             try {
-                $message->execute();
+                $message->execute($this->container);
                 $this->deleteMessage($message);
             } catch(\Exception $e) {
                 $this->log($message, $e);
